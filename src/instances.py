@@ -234,6 +234,10 @@ class Instance(object):
               get_stats: bool = True):
         """Check the satisfiability of the instance."""
         solver.reset()
+
+        for param, value in DISABLED_TRANSFORMATIONS_PARAMETERS.items():
+            solver.set(param, value)
+
         self.trace_stats.reset_trace_offset()
         if is_seed:
             solver.set('timeout', SEED_SOLVE_TIME_LIMIT_MS)
@@ -399,6 +403,31 @@ def get_mut_weights_dict():
     return mut_weight_dict
 
 
+# still enabled: coi_filter, interp_tail_simplifier
+DISABLED_TRANSFORMATIONS_PARAMETERS = {
+    'XFORM.INSTANTIATE_ARRAYS': False,
+    'XFORM.QUANTIFY_ARRAYS': False,
+    'XFORM.TRANSFORM_ARRAYS': False,
+    "DATALOG.SUBSUMPTION": False,
+    'XFORM.SLICE': False,
+    'XFORM.UNFOLD_RULES': 0,
+    'XFORM.MAGIC': False,
+    'XFORM.INSTANTIATE_QUANTIFIERS': False,
+    'XFORM.INLINE_EAGER': False,
+    'XFORM.INLINE_LINEAR': False,
+    'XFORM.BIT_BLAST': False,
+    'XFORM.SCALE': False,
+    'XFORM.ELIM_TERM_ITE': False,
+    'XFORM.COMPRESS_UNBOUND': False,
+    'XFORM.TAIL_SIMPLIFIER_PVE': False,
+}
+IGNORED_PARAMETER_MUTATIONS = set(DISABLED_TRANSFORMATIONS_PARAMETERS.keys()) | {
+    'XFORM.ARRAY_BLAST_FULL',
+    'XFORM.COALESCE_RULES',
+    'XFORM.INLINE_LINEAR_BRANCH',
+}
+
+
 def init_mut_types(options: list = None, mutations: list = None):
     global mut_types, with_weights, mut_groups
 
@@ -441,7 +470,10 @@ def init_mut_types(options: list = None, mutations: list = None):
                      # 'XFORM.MAGIC', -- often causes unknown
                      # 'XFORM.SCALE', -- often causes unknown
                      'XFORM.QUANTIFY_ARRAYS',
-                     'XFORM.TRANSFORM_ARRAYS'}:
+                     'XFORM.TRANSFORM_ARRAYS',
+                     "DATALOG.SUBSUMPTION"}:
+            if name in IGNORED_PARAMETER_MUTATIONS:
+                continue
             mut_types[name] = MutType(name, MutTypeGroup.PARAMETERS, default_value=False)
 
         for name in {'SPACER.CTP',
@@ -456,12 +488,14 @@ def init_mut_types(options: list = None, mutations: list = None):
                      'SPACER.USE_DERIVATIONS',
                      'SPACER.USE_INC_CLAUSE',
                      'SPACER.USE_INDUCTIVE_GENERALIZER',
-                     'XFORM.COI',
+                     # 'XFORM.COI', -- do nothing
                      'XFORM.COMPRESS_UNBOUND',
                      'XFORM.INLINE_EAGER',
                      'XFORM.INLINE_LINEAR',
                      'XFORM.SLICE',
                      'XFORM.TAIL_SIMPLIFIER_PVE'}:
+            if name in IGNORED_PARAMETER_MUTATIONS:
+                continue
             mut_types[name] = MutType(name, MutTypeGroup.PARAMETERS, default_value=True)
 
         mut_types['SPACER.ORDER_CHILDREN'] = \
