@@ -5,9 +5,9 @@ import pandas as pd
 from dataclasses import dataclass
 
 COVERAGE = {
-    'seed': 'coverage-datailed.json',
-    'best': 'coverage-datailed.json',
-    'worst': 'coverage-datailed.json',
+    'seed': 'seed-coverage-datailed.json',
+    'best': 'trans-coverage-datailed.json',
+    'worst': 'seed-coverage-datailed.json',
 }
 
 
@@ -93,11 +93,7 @@ def analyze_file_coverage(analysis, coverage_data, file) -> Optional[Coverage]:
         right = get_coverage(analysis.right, coverage_data, file)
         if left is None or right is None:
             return None
-        if left.all != right.all:
-            raise Exception('all lines mismatch')
-        if left.code != right.code:
-            raise Exception('code lines mismatch')
-        return Coverage(left.all, left.code, left.covered - right.covered)
+        return Coverage(left.all | right.all, left.code | right.code, left.covered - right.covered)
     if isinstance(analysis, Pick):
         return get_coverage(analysis.name, coverage_data, file)
 
@@ -116,13 +112,13 @@ def analyze(coverage_data):
     data = pd.DataFrame(columns=df_columns)
 
     for file in sorted(all_coverage_files):
-        all_lines = None
-        code_lines = None
+        all_lines = set()
+        code_lines = set()
         res = {'file': file}
         for analysis in ANALYZE:
             coverage = analyze_file_coverage(analysis, parsed_coverage_data, file)
-            all_lines = all_lines or coverage and coverage.all
-            code_lines = code_lines or coverage and coverage.code
+            all_lines = all_lines or coverage and coverage.all | all_lines
+            code_lines = code_lines or coverage and coverage.code | code_lines
             res[str(analysis)] = coverage and len(coverage.covered)
         res['all_lines'] = all_lines and len(all_lines)
         res['code_lines'] = code_lines and len(code_lines)
@@ -136,7 +132,7 @@ def main():
         with open(file) as f:
             coverage_data[name] = json.load(f)
     result = analyze(coverage_data)
-    a = 3
+    result.to_csv('result.csv')
 
 
 if __name__ == '__main__':
