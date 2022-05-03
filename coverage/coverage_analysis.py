@@ -7,7 +7,7 @@ from dataclasses import dataclass
 COVERAGE = {
     'seed': 'seed-coverage-datailed.json',
     'best': 'trans-coverage-datailed.json',
-    'worst': 'seed-coverage-datailed.json',
+    'loh': 'loh-coverage-datailed.json',
 }
 
 
@@ -27,6 +27,17 @@ class Minus(Analysis):
 
 
 @dataclass
+class And(Analysis):
+    left: object
+    right: object
+
+    def __str__(self):
+        left = str(self.left) if not isinstance(self.left, Analysis) else f'({str(self.left)})'
+        right = str(self.right) if not isinstance(self.right, Analysis) else f'({str(self.right)})'
+        return f'{left} & {right}'
+
+
+@dataclass
 class Pick(Analysis):
     name: str
 
@@ -37,11 +48,12 @@ class Pick(Analysis):
 ANALYZE = [
     Pick('seed'),
     Pick('best'),
-    Pick('worst'),
+    Pick('loh'),
     Minus('best', 'seed'),
-    Minus('worst', 'seed'),
-    Minus(Minus('best', 'seed'), 'worst'),
-    Minus(Minus('worst', 'seed'), 'best')
+    Minus('loh', 'seed'),
+    Minus(Minus('best', 'seed'), 'loh'),
+    Minus(Minus('loh', 'seed'), 'best'),
+    And(Minus('best', 'seed'), Minus('loh', 'seed')),
 ]
 
 
@@ -94,6 +106,12 @@ def analyze_file_coverage(analysis, coverage_data, file) -> Optional[Coverage]:
         if left is None or right is None:
             return None
         return Coverage(left.all | right.all, left.code | right.code, left.covered - right.covered)
+    if isinstance(analysis, And):
+        left = get_coverage(analysis.left, coverage_data, file)
+        right = get_coverage(analysis.right, coverage_data, file)
+        if left is None or right is None:
+            return None
+        return Coverage(left.all | right.all, left.code | right.code, left.covered & right.covered)
     if isinstance(analysis, Pick):
         return get_coverage(analysis.name, coverage_data, file)
 
