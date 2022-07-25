@@ -9,7 +9,7 @@ MUT_SOLVE_TIME_LIMIT_MS = int(1e5)
 
 MODEL_CHECK_TIME_LIMIT = 100
 INSTANCE_ID = 0
-ONE_INST_MUT_LIMIT = 1000
+ONE_INST_MUT_LIMIT = 100
 
 unique_traces = set()
 instance_groups = defaultdict()

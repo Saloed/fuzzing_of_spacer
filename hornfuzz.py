@@ -21,7 +21,7 @@ counter = defaultdict(int)
 general_stats: TraceStats = None
 
 PROBLEMS_LIMIT = 10
-MUT_WEIGHT_UPDATE_RUNS = 10000
+MUT_WEIGHT_UPDATE_RUNS = 1000
 PROCESS_NUMBER = 4
 
 with_oracles = False
