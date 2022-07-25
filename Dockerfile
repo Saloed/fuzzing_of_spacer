@@ -45,9 +45,10 @@ RUN cd z3/build && make -j$(nproc) && make install
 
 # add project-files
 ADD src src
+ADD hornfuzz.py .
 ADD seed_info seed_info
 ADD false_formulas false_formulas
 ADD exclude_seed.json .
 
 # run fuzzing
-CMD ["python", "src/main.py", "all", "-heuristics", "transitions"]
+CMD ["python", "hornfuzz.py", "all", "-heuristics", "transitions"]
