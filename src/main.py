@@ -33,7 +33,7 @@ general_stats = None
 counter = defaultdict(int)
 
 PROBLEMS_LIMIT = 10
-MUT_WEIGHT_UPDATE_RUNS = 10000
+MUT_WEIGHT_UPDATE_RUNS = 1000
 
 with_oracles = False
 oracles_names = {'Eldarica'}
