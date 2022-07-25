@@ -23,7 +23,7 @@ docker_command = ["python", "src/main.py", SEEDS] + FUZZER_ARGS
 #docker_command = ["/bin/bash"]
 docker_path_mapping = {
     log_file: '/logfile',
-    seed_info_dir: '/seed_info',
+    # seed_info_dir: '/seed_info',
     workdir: '/output',
     memory_analyzer_path: '/memory_analyzer_out'
 }
