@@ -18,7 +18,7 @@ seed_number = 0
 queue = []
 current_ctx = None
 counter = defaultdict(int)
-general_stats = TraceStats()
+general_stats: TraceStats = None
 
 PROBLEMS_LIMIT = 10
 MUT_WEIGHT_UPDATE_RUNS = 10000
@@ -233,7 +233,7 @@ def fuzz(instance: Instance):
 
 def preprocess() -> set:
     global heuristics, heuristic_flags, mutations, \
-        options, seed_number, with_oracles
+        options, seed_number, with_oracles, general_stats
 
     parser = argparse.ArgumentParser()
     parser.add_argument('seeds',
@@ -271,6 +271,7 @@ def preprocess() -> set:
     for heur in heuristics:
         heuristic_flags[heur] = True
     set_stats_type(heuristic_flags)
+    general_stats = TraceStats()
 
     options = argv.options
     with_oracles = 'with_oracles' in options

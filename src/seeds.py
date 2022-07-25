@@ -64,17 +64,17 @@ def known_seeds_processor(counter: dict, general_stats: TraceStats,
     return (it for it in processed_seeds if it is not None)
 
 
-def new_seeds_processor(counter: dict, files: set, base_idx: int, seed_info_index):
+def new_seeds_processor(counter: dict, general_stats: TraceStats, files: set, base_idx: int, seed_info_index):
     seed_info = {}
     for i, seed in enumerate(files, start=base_idx):
-        instance = mk_seed_instance(i, seed, parse=True)
+        instance = mk_seed_instance(counter=counter, idx=i, seed_file_name=seed, parse=True)
         if instance is None:
             seed_info[seed] = {'error': 'error at instance creation'}
             continue
         counter['runs'] += 1
         try:
             st_time = time.perf_counter()
-            check_satis(instance, is_seed=True)
+            check_satis(general_stats, instance, is_seed=True)
             message = instance.check_model()
             if instance.model_info[0] != sat:
                 handle_bug(counter,
@@ -113,7 +113,7 @@ def run_seeds(files: set, queue: list, seed_number: int,
     known_seed_files = files & set(seed_info_index.keys())
     other_seed_files = files - known_seed_files
     known_seeds = known_seeds_processor(counter, general_stats, known_seed_files, 0, seed_info_index)
-    other_seeds = new_seeds_processor(counter, other_seed_files, len(known_seed_files), seed_info_index)
+    other_seeds = new_seeds_processor(counter, general_stats, other_seed_files, len(known_seed_files), seed_info_index)
 
     for i, (instance, solve_time) in enumerate(itertools.chain(known_seeds, other_seeds)):
         queue.append(instance)
