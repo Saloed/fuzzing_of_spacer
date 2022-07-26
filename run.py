@@ -11,7 +11,7 @@ SEED_PATH = 'seed_info'
 WORKDIR_PATH = 'work-dir'
 
 # IMAGE_NAME = 'spacer-fuzzer'
-IMAGE_NAME = 'conyashka/horny-fuzz:384ba0f5'
+IMAGE_NAME = 'conyashka/horny-fuzz:33240445'
 
 option_suffix = '-'.join(it.strip('-') for it in FUZZER_ARGS)
 log_file = os.path.join(os.getcwd(), LOG_PATH, f'log-{FUZZER_ID}-{option_suffix}')
