@@ -1,7 +1,6 @@
 import hashlib
 import json
 import random
-import traceback
 from collections import defaultdict
 from copy import deepcopy
 from enum import Enum
@@ -9,12 +8,11 @@ from typing import List
 
 import numpy as np
 from scipy.sparse import dok_matrix
-from from_z3 import *
+from z3_util import *
 
-TRACE_FILE = '.z3-trace'
+z3_trace = Z3TraceManager()
 
 trace_states = defaultdict(int)
-trace_offset = 0
 info_kinds = {Z3_OP_AND: '(declare-fun and *)',
               Z3_OP_OR: '(declare-fun or *)',
               Z3_QUANTIFIER_AST: 'quantifiers',
@@ -134,18 +132,14 @@ class TraceStats(object):
 
     def read_from_trace(self, is_seed: bool = False):
         """Read z3-trace from last read line."""
-        with open(TRACE_FILE, 'r') as trace:
-            trace.seek(trace_offset)
-            lines = trace.readlines()
+        lines = z3_trace.read_lines()
         states = [State(line) for line in lines]
         self.load_states(states)
         if is_seed:
             self.states = states
 
     def reset_trace_offset(self):
-        global trace_offset
-        with open(TRACE_FILE, 'r') as trace:
-            trace_offset = trace.seek(0, io.SEEK_END)
+        z3_trace.reset()
 
     def load_states(self, states: List[State]):
         hash_builder = hashlib.sha512()

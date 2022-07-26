@@ -1,11 +1,11 @@
 import argparse
 import faulthandler
+import traceback
 import gc
 import logging
 import itertools
 from typing import Optional
 
-import objgraph
 import os.path
 
 import instances
@@ -14,8 +14,7 @@ from instances import *
 from seeds import *
 from seed_info_utils import *
 
-# noinspection PyUnresolvedReferences
-import z3_api_mods
+from z3_util import *
 
 faulthandler.enable()
 enable_trace('spacer')

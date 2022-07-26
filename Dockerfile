@@ -1,4 +1,4 @@
-FROM archlinux
+FROM archlinux:base-devel-20220123.0.45312
 
 MAINTAINER Anzhela Sukhanova <bidelya@gmail.com>
 
