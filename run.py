@@ -31,8 +31,9 @@ docker_path_mapping = {
 docker_path_mapping_arg = ' '.join(f'-v {host}:{container}' for host, container in docker_path_mapping.items())
 docker_command_arg = ' '.join(docker_command)
 docker_permissions_arg = '--cap-add=SYS_PTRACE --security-opt seccomp=unconfined'
+docker_memory_limits = '--memory="6g" --memory-swap="12g"'
 
-docker_full_command = f'docker run --rm -it {docker_path_mapping_arg} {docker_permissions_arg} {IMAGE_NAME} {docker_command_arg}'
+docker_full_command = f'docker run --rm -it {docker_path_mapping_arg} {docker_memory_limits} {docker_permissions_arg} {IMAGE_NAME} {docker_command_arg}'
 
 if not os.path.exists(log_file):
     os.makedirs(os.path.dirname(log_file), exist_ok=True)
