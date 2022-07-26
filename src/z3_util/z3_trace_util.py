@@ -71,9 +71,15 @@ else:
 
 
     def _read_all_timed_action(pipe, buffer: list, lock: threading.Lock):
-        lock.acquire(blocking=True)
-        _read_pipe_up_to_end(pipe, buffer)
-        lock.release()
+        def read_loop():
+            stopped = threading.Event()
+            while not stopped.wait(10.0):
+                with lock:
+                    _read_pipe_up_to_end(pipe, buffer)
+
+        runner = threading.Thread(target=read_loop)
+        runner.daemon = True
+        return runner
 
 
     pipe_descriptor = _setup_trace_pipe()
@@ -84,20 +90,19 @@ else:
             self.pipe = pipe_descriptor
             self.lock = threading.Lock()
             self.buffer = list()
-            self.scheduled_read = threading.Timer(1, _read_all_timed_action, args=(self.pipe, self.buffer, self.lock))
+            self.scheduled_read = _read_all_timed_action(self.pipe, self.buffer, self.lock)
             self.scheduled_read.start()
 
         def reset(self):
-            self.lock.acquire(blocking=True)
-            _read_pipe_up_to_end(self.pipe, self.buffer)
-            self.buffer.clear()
-            self.lock.release()
+            with self.lock:
+                _read_pipe_up_to_end(self.pipe, self.buffer)
+                self.buffer.clear()
 
         def read_lines(self) -> List[str]:
-            self.lock.acquire(blocking=True)
-            _read_pipe_up_to_end(self.pipe, self.buffer)
-            str_buffer = [it.decode('utf-8') for it in self.buffer]
-            self.lock.release()
+            with self.lock:
+                _read_pipe_up_to_end(self.pipe, self.buffer)
+                str_buffer = [it.decode('utf-8') for it in self.buffer]
+                self.buffer.clear()
             return ''.join(str_buffer).split(os.linesep)
 
 
