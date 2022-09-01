@@ -391,12 +391,17 @@ def remove_dup_not(expr):
 
 
 def get_chc_body(clause):
-    _, expr = get_vars_and_body(clause)
+    vars, expr = get_vars_and_body(clause)
     child = expr.children()[0] if expr.children() else None
     body = expr
+    head = None
 
     if is_implies(expr):
         body = expr.children()[0]
+        head = expr.children()[1]
+    elif is_or(expr) and len(expr.children()) == 2 and is_not(expr.children()[0]):
+        body = expr.children()[0]
+        head = expr.children()[1]
     elif is_or(expr) or (is_not(expr) and is_and(child)):
         body_expr = []
         expr = child if is_not(expr) else expr
@@ -413,7 +418,9 @@ def get_chc_body(clause):
     else:
         pass
 
-    return body
+    body = body if body is None else substitute_vars(body, *list(reversed(vars)))
+    head = head if head is None else substitute_vars(head, *list(reversed(vars)))
+    return body, head
 
 
 def reverse_dict(initial_dict: dict):

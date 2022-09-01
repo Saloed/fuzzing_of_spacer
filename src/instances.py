@@ -2,6 +2,7 @@ import time
 import re
 import utils
 from utils import *
+from z3 import *
 
 MUT_APPLY_TIME_LIMIT = 10
 SEED_SOLVE_TIME_LIMIT_MS = int(2 * 1e3)
@@ -52,8 +53,8 @@ class InstanceGroup(object):
         """Add an instance to the group."""
         length = len(self.instances)
         self.instances[length] = instance
-        if length == 0:
-            self.dump_declarations()
+        # if length == 0:
+        #     self.dump_declarations()
 
     def dump_declarations(self):
         filename = 'output/decl/' + self.filename
@@ -100,8 +101,8 @@ class InstanceGroup(object):
                 return 0
 
     def restore(self, id: int, mutations):
-        seed = parse_smt2_file(self.filename, ctx=current_ctx)
-        instance = Instance(id, seed)
+        # seed = parse_smt2_file(self.filename, ctx=current_ctx)
+        instance = Instance(id, None)
         self.push(instance)
 
         for mut in mutations:
@@ -193,12 +194,12 @@ class Instance(object):
         assert chc is not None, "Empty chc-system"
 
         self.chc = chc
-        group = self.get_group()
-        if group.upred_num == 0:
-            self.find_pred_info()
-            if group.family == Family.UNKNOWN:
-                group.find_family(chc)
-
+        # group = self.get_group()
+        # if group.upred_num == 0:
+        #     self.find_pred_info()
+        #     if group.family == Family.UNKNOWN:
+        #         group.find_family(chc)
+        #
         chc_len = len(self.chc)
         group.same_stats_limit = 5 * chc_len
         self.info = ClauseInfo(chc_len)
@@ -262,14 +263,40 @@ class Instance(object):
         solver.set('timeout', MODEL_CHECK_TIME_LIMIT)
         for i, clause in enumerate(self.chc):
             inter_clause = self.model.eval(clause)
+            solver.push()
             solver.add(inter_clause)
             model_state = solver.check()
-            if model_state != sat:
+            solver.pop()
+            if model_state == sat:
+                continue
+            if model_state == unsat:
                 self.model_info = (model_state, i)
-                break
+                return
+            body, head = None, None
+            if is_quantifier(clause) and clause.is_forall():
+                 body, head = get_chc_body(clause)
+            # print(clause)
+            if body is not None and head is not None:
+                # print(head)
+                # print(body)
+                not_head = Not(self.model.eval(head))
+                tail = self.model.eval(body)
+                solver.push()
+                solver.add(not_head)
+                solver.add(tail)
+                model_state = solver.check()
+                solver.pop()
+                if model_state == sat:
+                    self.model_info = (unsat, i)
+                    return
+                if model_state == unsat:
+                    continue
+
+            self.model_info = (unknown, i, solver.reason_unknown())
 
         if self.model_info[0] == unknown:
-            return solver.reason_unknown()
+            print(self.model_info[2])
+            return self.model_info[2]
         return None
 
     def update_traces_info(self):
@@ -679,21 +706,22 @@ class Mutation(object):
         timeout = False
         changed = True
         new_instance.params = instance.params
-
-        self.next_mutation(instance)
+        #
+        # self.next_mutation(instance)
         mut_name = self.type.name
-
-        if mut_name == 'ID':
-            assert False, 'No mutation can be applied'
-
-        if instance.chc is None:
-            print(mut_name)
-        assert instance.chc is not None, "Empty chc-system"
+        #
+        # if mut_name == 'ID':
+        #     assert False, 'No mutation can be applied'
+        #
+        # if instance.chc is None:
+        #     print(mut_name)
+        # assert instance.chc is not None, "Empty chc-system"
 
         if self.type.is_solving_param():
-            new_instance.set_chc(instance.chc)
+            # new_instance.set_chc(instance.chc)
             new_instance.add_param(self.type)
             return timeout, changed
+        return timeout, changed
 
         st_time = time.perf_counter()
         if mut_name == 'ADD_LIN_RULE':
@@ -734,7 +762,7 @@ class Mutation(object):
         mult_kinds = defaultdict(list)
         types_to_choose = set()
         group = instance.get_group()
-        instance.find_system_info()
+        # instance.find_system_info()
         info = instance.info
 
         mut_group = random.choice(mut_groups)

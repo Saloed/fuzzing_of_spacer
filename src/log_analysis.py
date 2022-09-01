@@ -238,6 +238,7 @@ def analyze(log_names: list, stats: list, select: list, options: list):
             except Exception:
                 print('Can\'t read the line:', line)
         cur_stats.df = pd.DataFrame(entries)
+        return cur_stats
 
         # for heur in info['heuristics']:
         #     if heur == 'transitions':

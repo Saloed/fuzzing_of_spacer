@@ -19,12 +19,13 @@ workdir = os.path.join(os.getcwd(), WORKDIR_PATH, f'fuzzer-workdir-{FUZZER_ID}-{
 seed_info_dir = os.path.join(os.getcwd(), SEED_PATH)
 memory_analyzer_path = os.path.join(os.getcwd(), 'memory_analyzer_out')
 
-docker_command = ["python", "src/main.py", SEEDS] + FUZZER_ARGS
-#docker_command = ["/bin/bash"]
+# docker_command = ["python", "src/main.py", SEEDS] + FUZZER_ARGS
+docker_command = ["/bin/bash"]
 docker_path_mapping = {
     log_file: '/logfile',
     # seed_info_dir: '/seed_info',
     workdir: '/output',
+    os.getcwd(): '/data',
     memory_analyzer_path: '/memory_analyzer_out'
 }
 
