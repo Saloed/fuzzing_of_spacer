@@ -593,7 +593,7 @@ def analyze_samples(sample: dict):
         return
 
     if not sample['default_params']['check'] and not sample['without_transformations']['check'] and not \
-    sample['transformations_only']['check']:
+            sample['transformations_only']['check']:
         pd = param_diff(
             sample['default_params']['params'], sample['reproduce']['params'],
             'false_check', 'true_check'
@@ -608,6 +608,142 @@ def analyze_samples(sample: dict):
         'type': 'unclassified',
         'params': {}
     }
+    return
+
+
+def classify_data():
+    with open('/data/04.json') as f:
+        data = json.load(f)
+
+    reproduced_data = {
+        f: data
+        for f, data in data.items()
+        if data['reproduce']['check'] and data['reproduce_check']['check']
+    }
+    for f, data in reproduced_data.items():
+        data['file'] = f
+
+    for data in reproduced_data.values():
+        analyze_samples(data)
+
+    for data in tqdm.tqdm(reproduced_data.values()):
+        analyze_transformations(data)
+
+    classified_data = group_by(reproduced_data.values(), key_getter=lambda it: it['classification']['type'])
+
+    with open('/data/04_x.json', 'w') as f:
+        json.dump(reproduced_data, f)
+
+
+def postprocess_classified():
+    with open('02_x.json') as f:
+        data = json.load(f)
+    classified_data = group_by(data.values(), key_getter=lambda it: it['classification']['type'])
+    classified_transformations = group_by(
+        classified_data['transformation_dependent'],
+        key_getter=lambda it: tuple(
+            sorted([(k, v) for k, v in it['classification']['required'].items() if k != 'xform.coi'])
+        )
+    )
+    classified_transformations_data = [
+        {
+            'required_parameters': {
+                p: v for p, v in key
+            },
+            'data': value
+        }
+        for key, value in classified_transformations.items()
+    ]
+    classified_data['transformation_dependent'] = classified_transformations_data
+    with open('02_classified.json', 'w') as f:
+        json.dump(classified_data, f)
+    return
+
+
+def group_classified_entries(report0):
+    return {
+        'other': [it['reproduce']['params'] for it in report0['other']],
+        'solver_params_dependent': [it['reproduce']['params'] for it in report0['solver_params_dependent']],
+        'transformation_dependent': [
+            (it['required_parameters'], len(it['data']))
+            for it in report0['transformation_dependent']
+        ],
+    }
+
+
+def aggregate_report_stats(report1):
+    transformation_inline_linear = 0
+    transformation_inline_eager = 0
+    transformation_other = 0
+    for (params, size) in report1['transformation_dependent']:
+        if params == {'xform.inline_linear': True}:
+            transformation_inline_linear += size
+            continue
+        if params == {'xform.inline_eager': True}:
+            transformation_inline_eager += size
+            continue
+        transformation_other += size
+
+    report2 = {
+        'unclassified': len(report1['other']),
+        'solver_params_dependent': len(report1['solver_params_dependent']),
+        'transformation_inline_linear': transformation_inline_linear,
+        'transformation_inline_eager': transformation_inline_eager,
+        'transformation_other': transformation_other,
+    }
+    report2['total'] = sum(report2.values())
+    return report2
+
+
+def split_runs(report0):
+    reportx = defaultdict(dict)
+    for sample in report0['other']:
+        key = sample['file'].split('work-dir-')[1].split('/bugs/')[0]
+        data = reportx[key].setdefault('other', [])
+        data.append(sample)
+    for sample in report0['solver_params_dependent']:
+        key = sample['file'].split('work-dir-')[1].split('/bugs/')[0]
+        data = reportx[key].setdefault('solver_params_dependent', [])
+        data.append(sample)
+    for samples in report0['transformation_dependent']:
+        params = samples['required_parameters']
+        params_x = defaultdict(list)
+        for sample in samples['data']:
+            key = sample['file'].split('work-dir-')[1].split('/bugs/')[0]
+            params_x[key].append(sample)
+        for key, samples in params_x.items():
+            data = reportx[key].setdefault('transformation_dependent', [])
+            data.append({'required_parameters': params, 'data': samples})
+    return reportx
+
+
+def gather_stats():
+    with open('05_classified.json') as f:
+        data = json.load(f)
+    report0 = {
+        'other': data.get('other', []),
+        'solver_params_dependent': data.get('solver_params_dependent', []),
+        'transformation_dependent': []
+    }
+    for sample in data.get('transformation_dependent', []):
+        if not sample['required_parameters']:
+            report0['other'].extend(sample['data'])
+            continue
+        report0['transformation_dependent'].append(sample)
+
+    reportx = split_runs(report0)
+    report1 = group_classified_entries(report0)
+    report1_x = {key: group_classified_entries(report0) for key, report0 in reportx.items()}
+
+    report2 = aggregate_report_stats(report1)
+    report2_x = {key: aggregate_report_stats(report1) for key, report1 in report1_x.items()}
+
+    with open('05_report.json', 'w') as f:
+        json.dump(report2, f)
+
+    with open('05_report_detailed.json', 'w') as f:
+        json.dump(report2_x, f)
+
     return
 
 
@@ -633,94 +769,14 @@ def main():
     init_mut_types([])
     all_params = [m for m in mut_types.values() if m.name in ALL_PARAMS]
 
-    # with open('/data/04.json') as f:
-    #     data = json.load(f)
-    #
-    # reproduced_data = {
-    #     f: data
-    #     for f, data in data.items()
-    #     if data['reproduce']['check'] and data['reproduce_check']['check']
-    # }
-    # for f, data in reproduced_data.items():
-    #     data['file'] = f
-    #
-    # for data in reproduced_data.values():
-    #     analyze_samples(data)
-    #
-    # for data in tqdm.tqdm(reproduced_data.values()):
-    #     analyze_transformations(data)
-    #
-    # classified_data = group_by(reproduced_data.values(), key_getter=lambda it: it['classification']['type'])
-    #
-    # with open('/data/04_x.json', 'w') as f:
-    #     json.dump(reproduced_data, f)
+    # classify_data()
     # return
-
-    # with open('02_x.json') as f:
-    #     data = json.load(f)
-    # classified_data = group_by(data.values(), key_getter=lambda it: it['classification']['type'])
-    # classified_transformations = group_by(
-    #     classified_data['transformation_dependent'],
-    #     key_getter=lambda it: tuple(
-    #         sorted([(k, v) for k, v in it['classification']['required'].items() if k != 'xform.coi'])
-    #     )
-    # )
-    # classified_transformations_data = [
-    #     {
-    #         'required_parameters': {
-    #             p: v for p, v in key
-    #         },
-    #         'data': value
-    #     }
-    #     for key, value in classified_transformations.items()
-    # ]
-    # classified_data['transformation_dependent'] = classified_transformations_data
-    # with open('02_classified.json', 'w') as f:
-    #     json.dump(classified_data, f)
+    #
+    # postprocess_classified()
     # return
-
-    with open('04_classified.json') as f:
-        data = json.load(f)
-    report0 = {
-        'other': data.get('other', []),
-        'solver_params_dependent': data.get('solver_params_dependent', []),
-        'transformation_dependent': []
-    }
-    for sample in data.get('transformation_dependent', []):
-        if not sample['required_parameters']:
-            report0['other'].extend(sample['data'])
-            continue
-        report0['transformation_dependent'].append(sample)
-    report1 = {
-        'other': [it['reproduce']['params'] for it in report0['other']],
-        'solver_params_dependent': [it['reproduce']['params'] for it in report0['solver_params_dependent']],
-        'transformation_dependent': [(it['required_parameters'], len(it['data'])) for it in report0['transformation_dependent']],
-    }
-    transformation_inline_linear = 0
-    transformation_inline_eager = 0
-    transformation_other = 0
-    for (params, size) in report1['transformation_dependent']:
-        if params == {'xform.inline_linear': True}:
-            transformation_inline_linear += size
-            continue
-        if params == {'xform.inline_eager': True}:
-            transformation_inline_eager += size
-            continue
-        transformation_other += size
-
-    report2 = {
-        'unclassified': len(report1['other']),
-        'solver_params_dependent': len(report1['solver_params_dependent']),
-        'transformation_inline_linear': transformation_inline_linear,
-        'transformation_inline_eager': transformation_inline_eager,
-        'transformation_other': transformation_other,
-    }
-    report2['total'] = sum(report2.values())
-
-    with open('04_report.json', 'w') as f:
-        json.dump(report2, f)
-
-    return
+    #
+    # gather_stats()
+    # return
 
     # base = '/data/bugs2/bugs/work-dir-02'
     #
